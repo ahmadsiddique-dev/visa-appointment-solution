@@ -1,0 +1,27 @@
+{
+  "name": "project-101",
+  "version": "1.0.0",
+  "description": "A project where we are going to make a bot that will send notifications for Qatar visa appointment.",
+  "homepage": "https://github.com/ahmadsiddique-dev/visa-appointment-solution#readme",
+  "bugs": {
+    "url": "https://github.com/ahmadsiddique-dev/visa-appointment-solution/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ahmadsiddique-dev/visa-appointment-solution.git"
+  },
+  "license": "ISC",
+  "author": "Ahmad Siddique",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "mongoose": "^9.3.1",
+    "playwright": "^1.58.2",
+    "telegraf": "^4.16.3"
+  }
+}
