@@ -9,90 +9,104 @@ const path = require("path");
  * @returns {Promise<string>} The cracked captcha text.
  */
 async function solveCaptcha(imageFileName, timeoutMs = 10000) {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const imagePath = path.isAbsolute(imageFileName) 
-        ? imageFileName 
-        : path.join(__dirname, imageFileName);
+    return new Promise(async (resolve, reject) => {
+        try {
+            const imagePath = path.isAbsolute(imageFileName)
+                ? imageFileName
+                : path.join(__dirname, imageFileName);
 
-      // Verify input image exists
-      try {
-        await fs.access(imagePath);
-      } catch (err) {
-        return reject(new Error(`Image file not found: ${imagePath}`));
-      }
+            // Verify input image exists
+            try {
+                await fs.access(imagePath);
+            } catch (err) {
+                return reject(new Error(`Image file not found: ${imagePath}`));
+            }
 
-      // Determine local virtual environment python executable
-      const isWin = process.platform === "win32";
-      const pythonExecutable = isWin
-        ? path.join(__dirname, ".venv", "Scripts", "python.exe")
-        : path.join(__dirname, ".venv", "bin", "python");
+            // Determine local virtual environment python executable
+            const isWin = process.platform === "win32";
+            const rootDir = path.resolve(__dirname, "../../");
 
-      // Verify the local virtual environment was set up
-      try {
-        await fs.access(pythonExecutable);
-      } catch (err) {
-        return reject(
-          new Error("Python virtual environment not found. Please run 'npm run setup' first.")
-        );
-      }
+            const pythonExecutable = isWin
+                ? path.join(rootDir, ".venv", "Scripts", "python.exe")
+                : path.join(rootDir, ".venv", "bin", "python");
 
-      const pythonScript = path.join(__dirname, "solve.py");
+            // Verify the local virtual environment was set up
+            try {
+                await fs.access(pythonExecutable);
+            } catch (err) {
+                return reject(
+                    new Error(
+                        "Python virtual environment not found. Please run 'npm run setup' first."
+                    )
+                );
+            }
 
-      // Spawn using absolute target strings to prevent injection.
-      const child = spawn(pythonExecutable, [pythonScript, imagePath], {
-        windowsHide: true,
-      });
+            const pythonScript = path.join(__dirname, "solve.py");
 
-      let stdoutData = "";
-      let stderrData = "";
+            // Spawn using absolute target strings to prevent injection.
+            const child = spawn(pythonExecutable, [pythonScript, imagePath], {
+                windowsHide: true,
+            });
 
-      // Ensure no hanging
-      const timeoutId = setTimeout(() => {
-        child.kill("SIGKILL");
-        reject(new Error(`Captcha solver timed out after ${timeoutMs}ms.`));
-      }, timeoutMs);
+            let stdoutData = "";
+            let stderrData = "";
 
-      child.stdout.on("data", (data) => {
-        stdoutData += data.toString();
-      });
+            // Ensure no hanging
+            const timeoutId = setTimeout(() => {
+                child.kill("SIGKILL");
+                reject(
+                    new Error(`Captcha solver timed out after ${timeoutMs}ms.`)
+                );
+            }, timeoutMs);
 
-      child.stderr.on("data", (data) => {
-        stderrData += data.toString();
-      });
+            child.stdout.on("data", (data) => {
+                stdoutData += data.toString();
+            });
 
-      child.on("close", (code) => {
-        clearTimeout(timeoutId);
+            child.stderr.on("data", (data) => {
+                stderrData += data.toString();
+            });
 
-        const lines = stdoutData.split("\n").map(l => l.trim()).filter(Boolean);
-        const lastLine = lines[lines.length - 1] || "";
+            child.on("close", (code) => {
+                clearTimeout(timeoutId);
 
-        if (lastLine.startsWith("SUCCESS:")) {
-          return resolve(lastLine.split("SUCCESS:")[1]);
-        } 
-        
-        if (lastLine === "ERROR_MISSING_DEPENDENCY") {
-          return reject(
-            new Error("Dependency missing. Please run 'npm run setup'.")
-          );
+                const lines = stdoutData
+                    .split("\n")
+                    .map((l) => l.trim())
+                    .filter(Boolean);
+                const lastLine = lines[lines.length - 1] || "";
+
+                if (lastLine.startsWith("SUCCESS:")) {
+                    return resolve(lastLine.split("SUCCESS:")[1]);
+                }
+
+                if (lastLine === "ERROR_MISSING_DEPENDENCY") {
+                    return reject(
+                        new Error(
+                            "Dependency missing. Please run 'npm run setup'."
+                        )
+                    );
+                }
+
+                reject(
+                    new Error(
+                        `Python Solver exited with code ${code}.\nStdout: ${stdoutData.trim()}\nStderr: ${stderrData.trim()}`
+                    )
+                );
+            });
+
+            child.on("error", (error) => {
+                clearTimeout(timeoutId);
+                reject(
+                    new Error(
+                        `Failed to start python process: ${error.message}`
+                    )
+                );
+            });
+        } catch (e) {
+            reject(e);
         }
-
-        reject(
-          new Error(
-            `Python Solver exited with code ${code}.\nStdout: ${stdoutData.trim()}\nStderr: ${stderrData.trim()}`
-          )
-        );
-      });
-
-      child.on("error", (error) => {
-        clearTimeout(timeoutId);
-        reject(new Error(`Failed to start python process: ${error.message}`));
-      });
-
-    } catch (e) {
-      reject(e);
-    }
-  });
+    });
 }
 
 module.exports = solveCaptcha;

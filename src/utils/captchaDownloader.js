@@ -1,33 +1,33 @@
 const fs = require("fs");
-const path = require("path");
 
-// async function DownloadCaptcha(url) {
-//     const splittedURL = url.split(",")[1];
+async function DownloadCaptcha(url) {
+    // Checking if directory exists then delete and make again also strore picture other wise create and store images
+    if (fs.readdirSync("../").includes("images")) {
+        fs.rm("../images", { recursive: true, force: true }, () => {
+            console.log("Removed Dir");
+            fs.mkdir("../images", () => {
+                console.log("Created Dir");
+                const splittedURL = url.split(",")[1];
 
-//     const buffer = Buffer.from(splittedURL, "base64");
-//     fs.rm('../images', { recursive: true, force: true })
-//     const path = `../images/image.jpg`
-//     fs.writeFileSync(path, buffer);
-//     return path;
-// }
+                const buffer = Buffer.from(splittedURL, "base64");
 
-// module.exports = DownloadCaptcha;
-(async () => {
-    await fs.mkdir("../images");
-})();
+                const path = `../images/image.jpg`;
+                fs.writeFileSync(path, buffer);
+                return path;
+            });
+        });
+    } else {
+        fs.mkdir("../images", () => {
+            console.log("Created Dir");
+            const splittedURL = url.split(",")[1];
 
-async function broom() {
-    try {
-        await fs.mkdir(
-            path.join(__dirname, "../images"),
-            { recursive: true },
-            (err, data) => {
-                console.log("Directory created (or already existed)!");
-            }
-        );
-    } catch (err) {
-        console.error("Error creating directory:", err);
+            const buffer = Buffer.from(splittedURL, "base64");
+
+            const path = `../images/image.jpg`;
+            fs.writeFileSync(path, buffer);
+            return path;
+        });
     }
 }
 
-broom();
+module.exports = DownloadCaptcha;
